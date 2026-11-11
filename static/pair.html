@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SmartMouse koppeln</title>
+<style>
+  :root { --bg:#f5f6f8; --fg:#1b1e26; --muted:#5d6475; --card:#fff; --line:#dfe2e8; --accent:#3b6cf6; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#12141a; --fg:#e8eaf0; --muted:#9aa1b2; --card:#1c1f28; --line:#2b2f3b; --accent:#7c9cff; } }
+  * { box-sizing:border-box; }
+  body { margin:0; font:16px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--fg); padding:32px 16px; }
+  main { max-width:760px; margin:0 auto; }
+  h1 { font-size:28px; margin:0 0 4px; }
+  p { color:var(--muted); margin:0 0 24px; }
+  .code { font:600 32px/1 ui-monospace, monospace; letter-spacing:6px; color:var(--accent); }
+  .grid { display:flex; flex-wrap:wrap; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; text-align:center; }
+  .qr { background:#fff; border-radius:8px; padding:8px; width:260px; max-width:100%; }
+  .qr svg { width:100%; height:auto; display:block; }
+  .card a { display:block; margin-top:10px; color:var(--fg); font-family:ui-monospace, monospace; }
+  ol { color:var(--muted); padding-left:20px; }
+  details { margin-top:16px; color:var(--muted); font-size:14px; }
+  details summary { cursor:pointer; }
+  details li { font-family:ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Handy als Maus koppeln</h1>
+  <p>Handy im selben WLAN, QR-Code mit der Kamera scannen. Oder Adresse öffnen und diesen Code eingeben:</p>
+  <p class="code">{{CODE}}</p>
+  <div class="grid">{{QRS}}</div>
+  {{OTHERS}}
+  <ol>
+    <li>Fragt Windows beim ersten Start nach der Firewall: Zugriff im <b>privaten Netzwerk</b> erlauben.</li>
+    <li>Am Handy im Browser-Menü „Zum Startbildschirm hinzufügen“ wählen, dann startet die Maus wie eine App.</li>
+  </ol>
+</main>
+</body>
+</html>

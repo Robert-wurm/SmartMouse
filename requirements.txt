@@ -1,0 +1,4 @@
+aiohttp>=3.9
+qrcode>=7.4
+pystray>=0.19
+pillow>=10

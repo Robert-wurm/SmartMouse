@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#111318">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>SmartMouse</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root {
+    --bg:#111318; --pad:#1b1e26; --pad-line:#2c313d; --fg:#e8eaf0; --muted:#8a91a3;
+    --accent:#6f8fff; --ok:#3ecf8e; --bad:#ff6b6b; --sheet:#1b1e26; --press:#2a3040;
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg);
+    font:15px/1.4 system-ui, -apple-system, sans-serif; overflow:hidden;
+    -webkit-user-select:none; user-select:none; overscroll-behavior:none; }
+  body { display:flex; flex-direction:column;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+
+  header { display:flex; align-items:center; gap:10px; padding:8px 12px; flex:0 0 auto; }
+  header .title { font-weight:600; flex:1; display:flex; align-items:center; gap:8px; }
+  .dot { width:9px; height:9px; border-radius:50%; background:var(--bad); }
+  .dot.ok { background:var(--ok); }
+  .dot.wait { background:#f0b429; }
+  .icon-btn { background:none; border:0; color:var(--fg); width:40px; height:40px; border-radius:10px;
+    display:grid; place-items:center; cursor:pointer; }
+  .icon-btn:active { background:var(--press); }
+  .icon-btn svg { width:22px; height:22px; }
+
+  #stage { flex:1; display:flex; align-items:center; justify-content:center; padding:0 12px 12px; min-height:0; }
+  #padBox { display:flex; flex-direction:column; gap:8px; width:100%; height:100%; }
+  #pad { position:relative; flex:1; background:var(--pad); border:1px solid var(--pad-line);
+    border-radius:18px; touch-action:none; overflow:hidden; }
+  #split { position:absolute; top:12%; bottom:12%; width:0; border-left:1px dashed var(--pad-line); pointer-events:none; }
+  .side { position:absolute; bottom:14px; font-size:12px; color:var(--muted); pointer-events:none; letter-spacing:.04em; }
+  #lblL { left:16px; } #lblR { right:16px; }
+  #hint { position:absolute; inset:0; display:grid; place-items:center; text-align:center; color:var(--muted);
+    font-size:13px; padding:24px; pointer-events:none; transition:opacity .4s; }
+  #pad.active #hint { opacity:0; }
+  #pad .ripple { position:absolute; width:56px; height:56px; margin:-28px 0 0 -28px; border-radius:50%;
+    background:var(--accent); opacity:.35; pointer-events:none; animation:rip .35s ease-out forwards; }
+  @keyframes rip { to { transform:scale(1.8); opacity:0; } }
+  #pad.dragging { border-color:var(--accent); }
+
+  #voice { display:none; flex:0 0 calc(33% - 8px); min-height:0; border:1px solid var(--pad-line);
+    background:var(--pad); color:var(--fg); border-radius:18px; font:inherit; touch-action:manipulation;
+    flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; }
+  #voice.on { display:flex; }
+  #voice svg { width:34px; height:34px; color:var(--accent); }
+  #voice .v-title { font-weight:600; font-size:17px; }
+  #voice .v-sub { color:var(--muted); font-size:13px; }
+  #voice:active { background:var(--press); }
+  #voice.live { border-color:var(--bad); }
+  #voice.live svg { color:var(--bad); animation:pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.35; } }
+
+  #btnBar { display:none; gap:8px; height:64px; flex:0 0 auto; }
+  #btnBar.on { display:flex; }
+  #btnBar button { flex:1; border:1px solid var(--pad-line); background:var(--pad); color:var(--muted);
+    border-radius:14px; font:inherit; touch-action:none; }
+  #btnBar button.mid { flex:0 0 22%; }
+  #btnBar button.down { background:var(--press); color:var(--fg); }
+
+  /* Kopplung */
+  #pairView { position:fixed; inset:0; background:var(--bg); display:none; flex-direction:column;
+    align-items:center; justify-content:center; padding:24px 16px; gap:14px; text-align:center; z-index:20; }
+  #pairView.on { display:flex; }
+  #pairView h1 { margin:0; font-size:22px; }
+  #pairView p { margin:0; color:var(--muted); max-width:340px; }
+  #codeInput { font:600 30px/1 ui-monospace, monospace; letter-spacing:10px; text-align:center; width:240px;
+    padding:12px; border-radius:12px; border:1px solid var(--pad-line); background:var(--pad); color:var(--fg); }
+  .primary { background:var(--accent); color:#fff; border:0; border-radius:12px; padding:12px 28px; font:600 16px system-ui; }
+  #pairErr { color:var(--bad); min-height:1.4em; }
+
+  /* Einstellungen */
+  #sheet { position:fixed; inset:0; background:rgba(0,0,0,.5); display:none; z-index:30; }
+  #sheet.on { display:block; }
+  #sheet .panel { position:absolute; left:0; right:0; bottom:0; max-height:88%; overflow-y:auto;
+    background:var(--sheet); border-radius:18px 18px 0 0; padding:16px 16px calc(24px + env(safe-area-inset-bottom)); }
+  #sheet h2 { margin:0 0 8px; font-size:18px; display:flex; justify-content:space-between; align-items:center; }
+  .row { padding:12px 0; border-bottom:1px solid var(--pad-line); }
+  .row label { display:flex; justify-content:space-between; gap:12px; align-items:center; }
+  .row .val { color:var(--accent); font-variant-numeric:tabular-nums; }
+  .row small { display:block; color:var(--muted); margin-top:2px; }
+  .row input[type=range] { width:100%; margin-top:10px; accent-color:var(--accent); }
+  .row input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent); flex:0 0 auto; }
+  .sheet-actions { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+  .ghost { background:none; border:1px solid var(--pad-line); color:var(--fg); border-radius:12px; padding:10px 16px; font:inherit; }
+  #installTip { color:var(--muted); font-size:13px; margin-top:14px; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="title"><span id="dot" class="dot"></span><span id="status">Verbinde…</span></div>
+    <button class="icon-btn" id="fsBtn" aria-label="Vollbild">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+    </button>
+    <button class="icon-btn" id="setBtn" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <div id="stage">
+    <div id="padBox">
+      <button id="voice" type="button" aria-label="Spracheingabe am PC starten">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10v1a7 7 0 0 0 14 0v-1M12 18v4M8 22h8"/></svg>
+        <span class="v-title">Spracheingabe</span>
+        <span class="v-sub" id="voiceSub">Tippen zum Starten</span>
+      </button>
+      <div id="pad">
+        <div id="split"></div>
+        <span class="side" id="lblL">LINKS</span>
+        <span class="side" id="lblR">RECHTS</span>
+        <div id="hint">Wischen = Maus bewegen<br>Tippen links / rechts = Links- / Rechtsklick<br>Zwei Finger = Scrollen · Lang drücken = Ziehen</div>
+      </div>
+      <div id="btnBar">
+        <button data-b="left">Links</button>
+        <button data-b="middle" class="mid">Mitte</button>
+        <button data-b="right">Rechts</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="pairView">
+    <h1>Mit PC verbinden</h1>
+    <p>Starte SmartMouse am PC und gib den dort angezeigten 6-stelligen Code ein.</p>
+    <input id="codeInput" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="••••••">
+    <button class="primary" id="pairBtn">Verbinden</button>
+    <div id="pairErr"></div>
+  </div>
+
+  <div id="sheet">
+    <div class="panel">
+      <h2>Einstellungen <button class="icon-btn" id="closeSheet" aria-label="Schließen">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></h2>
+      <div id="settingsList"></div>
+      <div class="sheet-actions">
+        <button class="ghost" id="resetBtn">Standardwerte</button>
+        <button class="ghost" id="unpairBtn">Kopplung lösen</button>
+      </div>
+      <div id="installTip"></div>
+    </div>
+  </div>
+
+<script src="app.js"></script>
+</body>
+</html>
